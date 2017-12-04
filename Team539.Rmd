@@ -1,0 +1,24 @@
+---
+title: "Presidential Election Maps for United Sates from 1920s"
+author: "Team FiveThirtyNine"
+date: "12/3/2017"
+output: html_document
+---
+# Libraries Needed
+```{r}
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(shiny)
+```
+# Scraping Data from Wikipedia
+```{r}
+get_election_data=function(year){
+  
+}
+```
+
+# Shiny App
+```{r}
+
+```
