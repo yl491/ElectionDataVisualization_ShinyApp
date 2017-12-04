@@ -27,11 +27,10 @@ raw_table <- page %>%
 raw_table <- raw_table[[1]]
 View(raw_table)
 
-## perhaps this is a solution? ##
-xp <- c('//*[@id="mw-content-text"]/div/div[24]/table','//*[@id="mw-content-text"]/div/div[16]/table','//*[@id="mw-content-text"]/div/div[24]/table','//*[@id="mw-content-text"]/div/div[22]/table','//*[@id="mw-content-text"]/div/div[39]/table')
 
-yr <- c("2000","2004","2008","2012","2016")
-
+#this, along with conditional statement in function, may have resolved the issue
+xp <- c(10,15,8,7,7,9,6,11,7,8,6,6,12,7,6,7,14,8,7,15,24,16,24,22,39)
+yr <- seq(1920,2016, by = 4)
 xpath <- as.list(setNames(xp,yr))
 ```
 
@@ -42,9 +41,20 @@ get_election_data=function(year){
   html_str <- paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
   
   page <- read_html(html_str)
-  raw_table <- page %>% 
-    html_nodes(xpath = xpath[[as.character(year)]]) %>% html_table()
   
+  if(year>=1996){
+      raw_table <- page %>% 
+        html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/div[',
+                              xpath[[as.character(year)]],']/table')) %>% 
+        html_table()
+  }
+  else{
+    raw_table <- page %>% 
+      html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/table[',
+                              xpath[[as.character(year)]],']')) %>%
+      html_table()
+  }
+
   raw_table <- raw_table[[1]]
   
 }
