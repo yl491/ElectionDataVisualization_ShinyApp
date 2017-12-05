@@ -92,18 +92,24 @@ test<-get_election_data(year)
 ```{r}
 get_election_data=function(year){
 
-
   html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
-  wiki<-read_html(html_str)%>%html_nodes(".wikitable.sortable") %>% html_table(fill = T)
-  wikitable = wiki[[1]]
+   wiki<-read_html(html_str)
+  wikitables<-wiki%>%html_nodes(".wikitable.sortable")
+  
+  for(i in 1:length(wikitables)){
+    temp=wikitables[[i]]%>%html_table(fill=TRUE)
+    if(nrow(temp)>49 &nrow(temp) < 60)
+      {
+        result_table=temp
+        break
+      }
+  }
   
   if(year == 1992){
-    
-    wikitable[1,]=str_replace_all(wikitable[1,],"^.*(?<=\\))","Margin")
-    result_table =  wikitable %>%  `colnames<-`(paste( wikitable[1,], wikitable[2,])) %>%slice(-1:-2) 
+    result_table[1,]=str_replace_all(result_table[1,],"^.*(?<=\\))","Margin")
+    result_table =  result_table %>%  `colnames<-`(paste( result_table[1,], result_table[2,])) %>%slice(-1:-2) 
       }else{
-   
-    result_table =  wikitable %>% `colnames<-`(paste0(colnames(wikitable),wikitable[1,])) %>% slice(-1)
+    result_table = result_table %>% `colnames<-`(paste0(colnames(result_table),result_table[1,])) %>% slice(-1)
     }
   return(result_table)
 }
