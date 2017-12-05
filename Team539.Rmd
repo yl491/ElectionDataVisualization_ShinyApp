@@ -32,30 +32,8 @@ View(raw_table)
 xp <- c(10,15,8,7,7,9,6,11,7,8,6,6,12,7,6,7,14,8,7,15,24,16,24,22,39)
 yr <- seq(1920,2016, by = 4)
 xpath <- as.list(setNames(xp,yr))
-```
 
-#draft session YL
-```{r}
-#states = read_html(base_url) %>%html_nodes(".c-directory-list-content-item-link") %>%html_attr("href")
-year=2016
-html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
-k<-read_html(html_str)
-kk<-k%>%html_nodes(".wikitable.sortable")#%>%html_table()
-for(i in 1:length(kk))
-{
-  temp=kk[[i]]%>%html_table()
-  if(nrow(temp)>49)
-     {
-       result_table=temp
-       break
-     }
-}
-
-```
-
-# Scraping Data from Wikipedia
-```{r}
-get_election_data=function(year){
+## deprecated function body ##
   html_str <- paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
   
   page <- read_html(html_str)
@@ -65,8 +43,7 @@ get_election_data=function(year){
         html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/div[',
                               xpath[[as.character(year)]],']/table')) %>% 
         html_table()
-  }
-  else{
+  }else{
     raw_table <- page %>% 
       html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/table[',
                               xpath[[as.character(year)]],']')) %>%
@@ -74,10 +51,30 @@ get_election_data=function(year){
   }
 
   raw_table <- raw_table[[1]]
+ 
+```
+
+# Scraping Data from Wikipedia
+```{r}
+get_election_data=function(year){
+  html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
+ 
+  k<-read_html(html_str)
+  kk<-k%>%html_nodes(".wikitable.sortable")
   
+  for(i in 1:length(kk))
+  {
+    temp=kk[[i]]%>%html_table(fill=TRUE)
+    if(nrow(temp)>49)
+      {
+        result_table=temp
+        break
+      }
+  }
+return(result_table)
 }
 
-year=1928
+year=1940
 test<-get_election_data(year)
 ```
 
