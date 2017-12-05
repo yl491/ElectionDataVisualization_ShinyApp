@@ -37,19 +37,20 @@ xpath <- as.list(setNames(xp,yr))
 #draft session YL
 ```{r}
 #states = read_html(base_url) %>%html_nodes(".c-directory-list-content-item-link") %>%html_attr("href")
-year=2016
+year=1996
 html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
 k<-read_html(html_str)
 kk<-k%>%html_nodes(".wikitable.sortable")#%>%html_table()
 for(i in 1:length(kk))
 {
-  temp=kk[[i]]%>%html_table()
+  temp=kk[[i]]%>%html_table(fill=TRUE)
   if(nrow(temp)>49)
      {
        result_table=temp
        break
      }
 }
+
 
 ```
 
@@ -77,7 +78,7 @@ get_election_data=function(year){
   
 }
 
-year=1928
+year=1992
 test<-get_election_data(year)
 ```
 
