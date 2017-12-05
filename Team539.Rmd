@@ -56,7 +56,6 @@ xpath <- as.list(setNames(xp,yr))
 # Scraping Data from Wikipedia
 ```{r}
 get_election_data=function(year){
-  year =1996
   html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
  
   
