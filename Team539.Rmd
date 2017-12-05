@@ -58,12 +58,12 @@ xpath <- as.list(setNames(xp,yr))
 get_election_data=function(year){
   html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
  
-  k<-read_html(html_str)
-  kk<-k%>%html_nodes(".wikitable.sortable")
+  wiki<-read_html(html_str)
+  wikitables<-wiki%>%html_nodes(".wikitable.sortable")
   
-  for(i in 1:length(kk))
+  for(i in 1:length(wikitables))
   {
-    temp=kk[[i]]%>%html_table(fill=TRUE)
+    temp=wikitables[[i]]%>%html_table(fill=TRUE)
     if(nrow(temp)>49)
       {
         result_table=temp
@@ -72,7 +72,7 @@ get_election_data=function(year){
   }
 return(result_table)
 }
-
+# year=2016
 test<-get_election_data(year)
 ```
 
