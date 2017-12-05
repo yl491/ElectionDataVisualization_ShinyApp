@@ -78,5 +78,23 @@ test<-get_election_data(year)
 
 # Shiny App
 ```{r}
-
+shinyApp(
+  ui = fluidPage(
+     titlePanel("Presidential Election App"),
+     sidebarLayout(position = "left",
+        sidebarPanel(
+          textInput("yearr","Year",value=2016),
+          actionButton("do", "See results")
+        ),
+        mainPanel(
+          
+        )
+     )
+     
+  ),
+  server = function(input, output, session) 
+  {
+    
+  }
+)
 ```
