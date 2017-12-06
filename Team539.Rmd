@@ -11,6 +11,9 @@ library(dplyr)
 library(tidyr)
 library(shiny)
 library(rvest)
+library(ggplot2)
+library(maps)
+library(leaflet)
 ```
 
 ```{r}
@@ -74,20 +77,25 @@ get_election_data=function(year){
   
   if(year!=1992){
     colnames(result_table)<-paste0(colnames(result_table),result_table[1,])
+    colnames(result_table)<-str_replace_all(colnames(result_table),"\n"," ")
     result_table<-result_table[-1,]
-  }else{
+  }
+  else{
     colnames(result_table)<-paste0(result_table[1,],result_table[2,])
+    colnames(result_table)<-str_replace_all(colnames(result_table),"\n"," ")
     result_table<-result_table[-(1:2),]
   }
-  
- 
-  
-  
+
   return(result_table)
 }
 # year=2016
-test<-get_election_data(year)
+#test<-get_election_data(year)
+
+a<-get_election_data(2016)
+b<-get_election_data(1992)
 ```
+
+#Below and up functions are nearly the same, so pick the more simple one
 
 ```{r}
 get_election_data=function(year){
@@ -113,11 +121,20 @@ get_election_data=function(year){
     }
   return(result_table)
 }
-
-
  
 ```
 
+# Draw US map
+```{r}
+# way 1
+mapStates<-map("state",fill=TRUE,plot=FALSE)
+leaflet(data=mapStates)%>%addTiles()%>%addPolygons(fillColor = topo.colors(10,alpha=NULL),stroke = FALSE)
+
+# way 2
+all_states <- map_data("state")
+a$region <- 
+Total <- merge(all_states, a, by="region")
+```
 
 # Shiny App
 ```{r}
