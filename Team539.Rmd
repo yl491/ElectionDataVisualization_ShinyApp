@@ -147,19 +147,22 @@ map <- leaflet(usa) %>% addPolygons()
 
 # Shiny App
 ```{r}
+#perhaps we could take cosmetic elements from Mine's SuperZip app: 
+#https://shiny.rstudio.com/gallery/superzip-example.html
+
 shinyApp(
   ui = fluidPage(
-     titlePanel("Presidential Election App"),
-     sidebarLayout(position = "left",
-        sidebarPanel(
-          textInput("yearr","Year",value=2016),
-          actionButton("do", "See results")
-        ),
-        mainPanel(
-          leafletOutput("map")
+        leafletOutput("map", width="100%",height=650),
+        absolutePanel(id = "elec_dat",top = 50,
+                   left = 20,right = "auto", bottom = "auto",
+                   width = 300, height = "auto", draggable = TRUE, fixed = TRUE,
+          wellPanel(
+          h3("Presidential Election App"),
+          numericInput("yearr","Year", min = 1920, max = 2016, step = 4, value = 1996),
+          actionButton("do", "See Results"),
+          style = "opacity: 0.75"
+          )         
         )
-     )
-     
   ),
   server = function(input, output, session) 
   {
