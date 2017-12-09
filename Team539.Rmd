@@ -59,7 +59,7 @@ get_election_data=function(year){
 
   html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
  
-  
+  ttt =
   wiki<-read_html(html_str)
   wikitables<-wiki%>%html_nodes(".wikitable.sortable")
   
@@ -98,7 +98,7 @@ get_election_data=function(year){
   
   for(i in 1:length(wikitables)){
     temp=wikitables[[i]]%>%html_table(fill=TRUE)
-    if(nrow(temp)>49 &nrow(temp) < 60)
+    if(nrow(temp)>49 & nrow(temp) < 60)
       {
         result_table=temp
         break
