@@ -19,46 +19,6 @@ devtools::install_github("hrbrmstr/albersusa")
 library(albersusa)
 ```
 
-```{r}
-#here's an basic scrape for 1924 election
-html_str <- "https://en.wikipedia.org/wiki/United_States_presidential_election,_1924#Results_by_state"
-## web_url is the same, just replace 1924 for another yr for a different election ##
-
-page <- read_html(html_str)
-raw_table <- page %>% 
-  html_nodes(xpath = '//*[@id="mw-content-text"]/div/table[15]') %>% html_table()
-## Problem: the xpath is not constant across all years ##
-## The selector for the tables doesn't appear to be consistent across pages either ##
-
-raw_table <- raw_table[[1]]
-View(raw_table)
-
-
-#this, along with conditional statement in function, may have resolved the issue
-xp <- c(10,15,8,7,7,9,6,11,7,8,6,6,12,7,6,7,14,8,7,15,24,16,24,22,39)
-yr <- seq(1920,2016, by = 4)
-xpath <- as.list(setNames(xp,yr))
-
-  html_str <- paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
-  
-  page <- read_html(html_str)
-  
-  if(year>=1996){
-      raw_table <- page %>% 
-        html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/div[',
-                              xpath[[as.character(year)]],']/table')) %>% 
-        html_table()
-  }else{
-    raw_table <- page %>% 
-      html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/table[',
-                              xpath[[as.character(year)]],']')) %>%
-      html_table()
-  }
-
-  raw_table <- raw_table[[1]]
- 
-```
-
 # Scraping Data from Wikipedia
 ```{r}
 get_election_data=function(year){
@@ -78,6 +38,7 @@ get_election_data=function(year){
       }
   }
   
+  #set uniform column names
   if(year == 1992){
     colnames(result_table)<-paste(result_table[1,],result_table[2,]) %>%
       str_replace_all("\n"," ") %>%
@@ -90,11 +51,39 @@ get_election_data=function(year){
       str_replace_all("^\\s","")
     result_table<-result_table[-1,]
   }
+  
+  d = result_table
+  
+  colnames(d) = colnames(d) %>%
+    str_replace_all("(?<!^)[Ee]lectoral votes","E") %>%
+    str_replace_all("#","Vote") %>%
+    str_replace_all("\\★","") %>%
+    str_replace_all("\\s$","")
+  
+  #remove superfluous columns
+  omit <- c("Electoral method","State Total","Total State","Total Status")
+  d = d[,-which(colnames(d) %in% omit)]
+  
+  #formatting dataframe
+  dd = apply(d,2,function(x){
+    x %>% str_replace_all("–|−","-") %>% str_replace_all("N/A","-") %>%
+      str_replace_all("^-$|^$","0") %>% str_replace_all("%","") %>%
+      str_replace_all(",","")
+    }) %>% as.data.frame(stringsAsFactors = FALSE)
+  
+  #turn appropriate columns into numeric variables
+  idx = which(str_detect(colnames(dd),"State(?!\\sTotal)"))
+  
+  dd[,-idx] = lapply(dd[,-idx],as.numeric)
+  
+  #rename clean output
+  clean_table = dd
 
-  return(result_table)
+  return(clean_table)
 }
-# year=2016
-#test<-get_election_data(year)
+
+#quick check to see if columns of output have any NA's
+any(apply(clean_table,2,function(x) {any(is.na(x))}))
 
 a<-get_election_data(2016)
 b<-get_election_data(1992)
