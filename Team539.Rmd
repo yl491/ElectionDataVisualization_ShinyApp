@@ -11,6 +11,12 @@ library(dplyr)
 library(tidyr)
 library(shiny)
 library(rvest)
+library(ggplot2)
+library(maps)
+library(leaflet)
+library(sf)
+devtools::install_github("hrbrmstr/albersusa")
+library(albersusa)
 ```
 
 ```{r}
@@ -72,22 +78,29 @@ get_election_data=function(year){
       }
   }
   
-  if(year!=1992){
-    colnames(result_table)<-paste0(colnames(result_table),result_table[1,])
-    result_table<-result_table[-1,]
-  }else{
-    colnames(result_table)<-paste0(result_table[1,],result_table[2,])
-    result_table<-result_table[-(1:2),]
+  if(year == 1992){
+    colnames(result_table)<-paste(result_table[1,],result_table[2,]) %>%
+      str_replace_all("\n"," ") %>%
+      str_replace_all("^\\s","")
+    result_table<-result_table[-c(1,2),]
   }
-  
- 
-  
-  
+  else{
+    colnames(result_table)<-paste(colnames(result_table),result_table[1,]) %>%
+      str_replace_all("\n"," ") %>%
+      str_replace_all("^\\s","")
+    result_table<-result_table[-1,]
+  }
+
   return(result_table)
 }
 # year=2016
-test<-get_election_data(year)
+#test<-get_election_data(year)
+
+a<-get_election_data(2016)
+b<-get_election_data(1992)
 ```
+
+#Below and up functions are nearly the same, so pick the more simple one
 
 ```{r}
 get_election_data=function(year){
@@ -113,11 +126,24 @@ get_election_data=function(year){
     }
   return(result_table)
 }
-
-
  
 ```
 
+# Draw US map
+```{r}
+# way 1
+mapStates<-map("state",fill=TRUE,plot=FALSE)
+leaflet(data=mapStates)%>%addTiles()%>%addPolygons(fillColor = topo.colors(10,alpha=NULL),stroke = FALSE)
+
+# way 2
+all_states <- map_data("state")
+ggplot()+
+  geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
+
+#using albersusa
+usa <- usa_sf()
+map <- leaflet(usa) %>% addPolygons()
+```
 
 # Shiny App
 ```{r}
@@ -130,14 +156,16 @@ shinyApp(
           actionButton("do", "See results")
         ),
         mainPanel(
-          
+          leafletOutput("map")
         )
      )
      
   ),
   server = function(input, output, session) 
   {
-    
+    output$map <- renderLeaflet({
+      leaflet(usa) %>% addPolygons()
+    })
   }
 )
 ```
