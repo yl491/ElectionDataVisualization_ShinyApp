@@ -15,6 +15,8 @@ library(ggplot2)
 library(maps)
 library(leaflet)
 library(sf)
+library(datamap)
+library(rMaps)
 devtools::install_github("hrbrmstr/albersusa")
 library(albersusa)
 ```
@@ -131,8 +133,18 @@ ggplot()+
 
 #using albersusa
 usa <- usa_sf()
-map <- leaflet(usa) %>% addPolygons()
+map <- leaflet(usa) %>% addPolygons() 
+
+#using datamap
+us_state_map <- Datamaps$new()
+us_state_map$set(
+  scope = 'usa',
+  legend = TRUE,
+  labels = TRUE
+)
+
 ```
+
 
 # Shiny App
 ```{r}
@@ -156,8 +168,9 @@ shinyApp(
   server = function(input, output, session) 
   {
     output$map <- renderLeaflet({
-      leaflet(usa) %>% addPolygons()
-    })
-  }
+      leaflet(usa) %>% addPolygons()})
+    
+    }
+  
 )
 ```
