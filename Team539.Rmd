@@ -57,14 +57,19 @@ get_election_data=function(year){
   d = result_table
   
   colnames(d) = colnames(d) %>%
+    str_replace_all("\\s$","") %>%
+    str_replace_all("^E$","electoral votes") %>%
     str_replace_all("(?<!^)[Ee]lectoral votes","E") %>%
+    str_replace_all("Top.+/R\\)","Margin") %>%
     str_replace_all("#","Vote") %>%
-    str_replace_all("\\★","") %>%
-    str_replace_all("\\s$","")
+    str_replace("State Total Vote","Total Vote") %>%
+    str_replace("State Total|Total State|^Total$","State Abbr") %>%
+    str_replace("State or district","State") %>%
+    str_replace_all("\\★","")
   
   #remove superfluous columns
-  omit <- c("Electoral method","State Total","Total State","Total Status")
-  d = d[,-which(colnames(d) %in% omit)]
+  omit <- c("Electoral method","Total Status")
+  d = d[,which(!(colnames(d) %in% omit))]
   
   #formatting dataframe
   dd = apply(d,2,function(x){
@@ -74,9 +79,21 @@ get_election_data=function(year){
     }) %>% as.data.frame(stringsAsFactors = FALSE)
   
   #turn appropriate columns into numeric variables
-  idx = which(str_detect(colnames(dd),"State(?!\\sTotal)"))
+  idx = which(str_detect(colnames(dd),"State"))
   
   dd[,-idx] = lapply(dd[,-idx],as.numeric)
+  
+  #add electoral votes column if doesn't already exist
+  if(!("electoral votes" %in% colnames(dd))){
+    dd = dd %>% mutate(
+      elec_vote = rowSums(dd[,str_detect(colnames(dd),"E$")])
+    )
+    colnames(dd)[colnames(dd) == "elec_vote"] = "electoral votes"
+  }
+  
+  #add winner column
+  dd = dd %>%
+    mutate(Winner = apply(dd,1,function(x){names(which.max(x[str_detect(colnames(dd),"E$")]))}))
   
   #rename clean output
   clean_table = dd
@@ -84,11 +101,14 @@ get_election_data=function(year){
   return(clean_table)
 }
 
-#quick check to see if columns of output have any NA's
-any(apply(clean_table,2,function(x) {any(is.na(x))}))
-
 a<-get_election_data(2016)
 b<-get_election_data(1992)
+c<-get_election_data(1984)
+d<-get_election_data(2012)
+e<-get_election_data(1920)
+
+#quick check to see which columns of output have NA's (if any)
+any(apply(a,2,function(x) {any(is.na(x))}))
 ```
 
 #Below and up functions are nearly the same, so pick the more simple one
@@ -132,8 +152,17 @@ ggplot()+
   geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
 
 #using albersusa
-usa <- usa_sf()
-map <- leaflet(usa) %>% addPolygons() 
+usa <- usa_sf() %>% mutate(`State Abbr` = as.character(iso_3166_2))
+k <- e %>% select(`State Abbr`,`Winner`) %>%
+  mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
+                           ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
+         )
+kk <- left_join(usa,k, by ="State Abbr") %>%
+          mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`))
+pal <- colorNumeric(c("white","red","blue","green"),0:3)
+map <- leaflet(kk) %>%
+  addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+              fillColor = ~pal(Winner),color = "black", weight = 1, opacity = 1)
 
 #using datamap
 us_state_map <- Datamaps$new()
@@ -151,6 +180,10 @@ us_state_map$set(
 #perhaps we could take cosmetic elements from Mine's SuperZip app: 
 #https://shiny.rstudio.com/gallery/superzip-example.html
 
+#map using albersusa
+usa <- usa_sf() %>% mutate(`State Abbr` = as.character(iso_3166_2))
+pal <- colorNumeric(c("white","red","blue","green"),0:3)
+
 shinyApp(
   ui = fluidPage(
         leafletOutput("map", width="100%",height=650),
@@ -167,8 +200,32 @@ shinyApp(
   ),
   server = function(input, output, session) 
   {
+    
+    #reactive values
+    data <- reactive({
+      get_election_data(input$yearr)
+    })
+    
+    k <- reactive({
+      data() %>% 
+        select(`State Abbr`,`Winner`) %>%
+        mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,
+                                 ifelse(
+                                   str_detect(.$`Winner`,"Democratic"),2,3)))
+    })
+    
+    kk <- reactive({
+      left_join(usa,k(), by ="State Abbr") %>%
+        mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`))
+    })
+    
+    #render map
     output$map <- renderLeaflet({
-      leaflet(usa) %>% addPolygons()})
+      leaflet(kk()) %>%
+        addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+                    fillColor = ~pal(Winner),color = "black",
+                    weight = 1, opacity = 1)
+      })
     
     }
   
