@@ -182,7 +182,8 @@ us_state_map$set(
 
 #map using albersusa
 usa <- usa_sf() %>% mutate(`State Abbr` = as.character(iso_3166_2))
-pal <- colorNumeric(c("white","red","blue","green"),0:3)
+pal <- colorNumeric(c("white","red","indianred2",
+                      "cornflowerblue","blue","green"),0:5)
 
 shinyApp(
   ui = fluidPage(
@@ -192,7 +193,8 @@ shinyApp(
                    width = 300, height = "auto", draggable = TRUE, fixed = TRUE,
           wellPanel(
           h3("Presidential Election App"),
-          numericInput("yearr","Year", min = 1920, max = 2016, step = 4, value = 1996),
+          numericInput("yearr","Year", min = 1920, max = 2016,
+                       step = 4, value = 1996),
           actionButton("do", "See Results"),
           style = "opacity: 0.75"
           )         
@@ -208,10 +210,16 @@ shinyApp(
     
     k <- reactive({
       data() %>% 
-        select(`State Abbr`,`Winner`) %>%
-        mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,
-                                 ifelse(
-                                   str_detect(.$`Winner`,"Democratic"),2,3)))
+        mutate(`Winner` = ifelse(
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
+          ifelse(
+            str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
+            ifelse(
+              str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10,3,
+              ifelse(
+                str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
+                ))))) %>%
+        select(`State Abbr`,`Winner`)
     })
     
     kk <- reactive({
