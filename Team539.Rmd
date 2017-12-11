@@ -15,48 +15,10 @@ library(ggplot2)
 library(maps)
 library(leaflet)
 library(sf)
+library(datamap)
+library(rMaps)#package ‘rMaps’ is not available (for R version 3.3.1) for me-YL
 devtools::install_github("hrbrmstr/albersusa")
 library(albersusa)
-```
-
-```{r}
-#here's an basic scrape for 1924 election
-html_str <- "https://en.wikipedia.org/wiki/United_States_presidential_election,_1924#Results_by_state"
-## web_url is the same, just replace 1924 for another yr for a different election ##
-
-page <- read_html(html_str)
-raw_table <- page %>% 
-  html_nodes(xpath = '//*[@id="mw-content-text"]/div/table[15]') %>% html_table()
-## Problem: the xpath is not constant across all years ##
-## The selector for the tables doesn't appear to be consistent across pages either ##
-
-raw_table <- raw_table[[1]]
-View(raw_table)
-
-
-#this, along with conditional statement in function, may have resolved the issue
-xp <- c(10,15,8,7,7,9,6,11,7,8,6,6,12,7,6,7,14,8,7,15,24,16,24,22,39)
-yr <- seq(1920,2016, by = 4)
-xpath <- as.list(setNames(xp,yr))
-
-  html_str <- paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
-  
-  page <- read_html(html_str)
-  
-  if(year>=1996){
-      raw_table <- page %>% 
-        html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/div[',
-                              xpath[[as.character(year)]],']/table')) %>% 
-        html_table()
-  }else{
-    raw_table <- page %>% 
-      html_nodes(xpath = paste0('//*[@id="mw-content-text"]/div/table[',
-                              xpath[[as.character(year)]],']')) %>%
-      html_table()
-  }
-
-  raw_table <- raw_table[[1]]
- 
 ```
 
 # Scraping Data from Wikipedia
@@ -78,6 +40,7 @@ get_election_data=function(year){
       }
   }
   
+  #set uniform column names
   if(year == 1992){
     colnames(result_table)<-paste(result_table[1,],result_table[2,]) %>%
       str_replace_all("\n"," ") %>%
@@ -90,14 +53,70 @@ get_election_data=function(year){
       str_replace_all("^\\s","")
     result_table<-result_table[-1,]
   }
+  
+  d = result_table
+  
+  colnames(d) = colnames(d) %>%
+    str_replace_all("\\s$","") %>%
+    str_replace_all("^E$","electoral votes") %>%
+    str_replace_all("(?<!^)[Ee]lectoral votes","E") %>%
+    str_replace_all("Top.+/R\\)","Margin") %>%
+    str_replace_all("#","Vote") %>%
+    str_replace("State Total Vote","Total Vote") %>%
+    str_replace("State [Tt]otal$|Total State$|^Total$","State Abbr") %>%
+    str_replace("State or district","State") %>%
+    str_replace_all("\\★","")
+  
+  #remove superfluous columns
+  omit <- c("Electoral method","Total Status")
+  d = d[,which(!(colnames(d) %in% omit))]
+  
+  #formatting dataframe
+  dd = apply(d,2,function(x){
+    x %>% str_replace_all("–|−","-") %>% str_replace_all("N/A","-") %>%
+      str_replace_all("^-$|^$","0") %>% str_replace_all("%","") %>%
+      str_replace_all(",","") %>% str_replace_all("\\†","") %>%
+      str_replace_all("\\★","")
+    }) %>% as.data.frame(stringsAsFactors = FALSE)
+  
+  #turn appropriate columns into numeric variables
+  idx = which(str_detect(colnames(dd),"State"))
+  
+  dd[,-idx] = lapply(dd[,-idx],as.numeric)
+  
+  #add electoral votes column if doesn't already exist
+  if(!("electoral votes" %in% colnames(dd))){
+    dd = dd %>% mutate(
+      elec_vote = rowSums(dd[,str_detect(colnames(dd),"E$")])
+    )
+    colnames(dd)[colnames(dd) == "elec_vote"] = "electoral votes"
+  }
+  
+  #add winner column and alter state column
+  dd = dd %>%
+    mutate(Winner = apply(dd,1,function(x){names(
+      which.max(x[str_detect(colnames(dd),"E$")])) %>% 
+        str_replace("\\sE$","")}),
+      State = `State Abbr` %>% str_extract_all("[:upper:]{2}") %>% unlist()
+      ) %>% select(-`State Abbr`)
+  
+  #rename clean output
+  clean_table = dd
 
-  return(result_table)
+  return(clean_table)
 }
+
 # year=2016
-#test<-get_election_data(year)
+
+test<-get_election_data(1940)
 
 a<-get_election_data(2016)
 b<-get_election_data(1992)
+
+
+#quick check to see which columns of output have NA's (if any)
+names(apply(e,2,function(x) {any(is.na(x))}))
+
 ```
 
 #Below and up functions are nearly the same, so pick the more simple one
@@ -141,31 +160,210 @@ ggplot()+
   geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
 
 #using albersusa
-usa <- usa_sf()
-map <- leaflet(usa) %>% addPolygons()
+usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
+k <- d %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
+  mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
+                           ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
+         )
+kk <- left_join(usa,k, by ="State")
+kk[is.na(kk)] <- 0
+
+pal <- colorNumeric(c("white","red","blue","green"),0:3)
+map <- leaflet(kk) %>%
+  addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+              fillColor = ~pal(Winner),color = "black", weight = 1, opacity = 1)
+
+#using datamap
+us_state_map <- Datamaps$new()
+us_state_map$set(
+  scope = 'usa',
+  legend = TRUE,
+  labels = TRUE
+)
+
+#test of pie chart
+pi_r = b[nrow(b),which(str_detect(colnames(test),"Republican Vote"))][[1]]
+pi_d = b[nrow(b),which(str_detect(colnames(test),"Democratic Vote"))][[1]]
+pi_o = b[nrow(b),which(str_detect(colnames(test),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+x<-c(pi_r,pi_d,pi_o)
+
+pie(x, labels = paste0(round(100*x/sum(x), 1),"%"), main = "Popular Vote",col=c("red","blue","grey"))
+legend("topright",
+       c(colnames(b) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+           na.omit() %>% unique(),
+         colnames(b) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+           na.omit() %>% unique(),"Others"),
+       fill = c("red","blue","grey"))
 ```
+
 
 # Shiny App
 ```{r}
+#perhaps we could take cosmetic elements from Mine's SuperZip app: 
+#https://shiny.rstudio.com/gallery/superzip-example.html
+
+#map using albersusa
+usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
+pal <- colorNumeric(c("white","red","indianred2",
+                      "cornflowerblue","blue","green"),0:5)
+
 shinyApp(
-  ui = fluidPage(
-     titlePanel("Presidential Election App"),
-     sidebarLayout(position = "left",
-        sidebarPanel(
-          textInput("yearr","Year",value=2016),
-          actionButton("do", "See results")
-        ),
-        mainPanel(
-          leafletOutput("map")
+  ui = navbarPage("Electoral College",
+    tabPanel("Electoral Map",
+        div(class="outer"),
+        leafletOutput("map", width="100%",height=600),
+        absolutePanel(id = "elec_dat",top = 70,
+                   left = 50,right = "auto", bottom = "auto",
+                   width = 300, height = "auto", draggable = TRUE, fixed = TRUE,
+          #wellPanel(
+          h3("Presidential Election App"),
+          numericInput("yearr","Year", min = 1920, max = 2016,
+                       step = 4, value = 1996),
+          actionButton("do", "See Results"),
+          br(),br(),
+          plotOutput("pop_vote"),
+          dataTableOutput("elec_vote"),
+          style = "opacity: 0.75"
+          #)         
         )
-     )
-     
+    ),
+    tabPanel("Election Data",
+        sidebarLayout(
+          sidebarPanel(
+            selectInput("cand","Candidate",choices = NULL),
+            selectInput("state","State", choices = NULL),
+            actionButton("retrieve", "See Candidate Data")
+          ),
+        mainPanel(
+          dataTableOutput("elec_dat")
+        )
+      )
+    )
   ),
   server = function(input, output, session) 
   {
-    output$map <- renderLeaflet({
-      leaflet(usa) %>% addPolygons()
+    
+    #reactive values
+    data <- eventReactive(input$do,{
+      get_election_data(input$yearr)
     })
+    
+    k <- reactive({
+      data() %>%
+        mutate(`Winner` = ifelse(
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
+          ifelse(
+            str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
+            ifelse(
+              str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10,3,
+              ifelse(
+                str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
+                ))))) %>%
+        select(State,`Winner`,`electoral votes`,`Margin %`)
+    })
+    
+    kk <- reactive({
+      left_join(usa,k(), by ="State") %>%
+        mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`),
+               `electoral votes` = ifelse(
+                 is.na(.$`electoral votes`),0,.$`electoral votes`),
+               `Margin %` = ifelse(is.na(.$`Margin %`),0,.$`Margin %`))
+    })
+    
+    #render pie chart
+    output$pop_vote <- renderPlot({
+      pi_r = data()[nrow(data()),which(str_detect(
+        colnames(data()),"Republican Vote"))][[1]]
+      pi_d = data()[nrow(data()),which(str_detect(
+        colnames(data()),"Democratic Vote"))][[1]]
+      pi_o = data()[nrow(data()),which(str_detect(
+        colnames(data()),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+      x = c(pi_r,pi_d,pi_o)
+      
+      r_lab = colnames(data()) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+                 na.omit() %>% unique()
+      d_lab = colnames(data()) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+                 na.omit() %>% unique()
+
+      pie(x, labels = paste0(round(100*x/sum(x), 1),"%"),
+          main = "Popular Vote",col=c("red","blue","grey"))
+      legend("topleft",
+             c(r_lab[1],d_lab[1],"Others"),
+             fill = c("red","blue","grey"))
+    })
+
+    
+    #render intial map
+    output$map <- renderLeaflet({
+      leaflet(usa) %>%
+        addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+                    fillColor = "gray",color = "black",
+                    weight = 1, opacity = 1)
+      })
+    
+    #update map
+    
+    observe({
+      
+      # poly_pop <-tagList(
+      # tags$h4(kk()$name),tags$br(),
+      # sprintf("Electoral votes: %s", kk()$`electoral votes`),tags$br(),
+      # sprintf("Winner: %s",kk()$`Winner`),tags$br(),
+      # sprintf("Margin: %s%%",abs(kk()$`Margin %`))
+      # )
+      
+      leafletProxy("map", data = kk()) %>%
+        addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+                    fillColor = ~pal(Winner),color = "black",
+                    weight = 1, opacity = 1, layerId =~name,
+                    popup = kk()$name)
+    })
+    
+    observe({
+       if(!is.null(input$map_shape_click)){
+         print(input$map_shape_click)
+       }
+     })
+    
+    #update select choices
+    list_cand<-eventReactive(input$do,{
+      colnames(data()) %>%
+        str_extract("^(?!Others|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")%>%
+        na.omit()%>%unique()
+      #old regex
+      #str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")
+      
+    })
+    observe({
+      updateSelectInput(session, "cand","Candidate",
+                      choices=c("none",list_cand()))
+  })
+    
+    observe({
+      updateSelectInput(session, "state","State",
+                      choices=c("none",data()$State))
+    })
+  
+    cand_table<-eventReactive(input$retrieve,{
+      # if(input$cand!="none"&&input$state!="none"){
+        data()%>%select(starts_with(input$cand))
+      # }
+    })
+    output$elec_dat<-renderDataTable(
+      cand_table)
+    #observe({
+      #leafletProxy("map") %>% clearPopups()
+      #pop <- input$map_shape_click
+      #if(is.null(pop)){
+        #return()
+      #}
+      
+      #isolate({
+        #leafletProxy("map") %>% addPopups(pop$lat,pop$lng,pop$id,
+                                          #layerId = pop$id)
+      #})
+    #})  
   }
+  
 )
 ```
