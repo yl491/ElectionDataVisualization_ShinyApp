@@ -16,7 +16,6 @@ library(maps)
 library(leaflet)
 library(sf)
 library(datamap)
-library(rMaps)#package ‘rMaps’ is not available (for R version 3.3.1) for me-YL
 devtools::install_github("hrbrmstr/albersusa")
 library(albersusa)
 ```
@@ -83,6 +82,9 @@ get_election_data=function(year){
   idx = which(str_detect(colnames(dd),"State"))
   
   dd[,-idx] = lapply(dd[,-idx],as.numeric)
+  dd$`Margin Vote`<-abs(dd$`Margin Vote`)
+  dd$`Margin %`<-abs(dd$`Margin %`)
+  
   
   #add electoral votes column if doesn't already exist
   if(!("electoral votes" %in% colnames(dd))){
@@ -114,38 +116,6 @@ a<-get_election_data(2016)
 b<-get_election_data(1992)
 
 
-#quick check to see which columns of output have NA's (if any)
-names(apply(e,2,function(x) {any(is.na(x))}))
-
-```
-
-#Below and up functions are nearly the same, so pick the more simple one
-
-```{r}
-get_election_data=function(year){
-
-  html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
-   wiki<-read_html(html_str)
-  wikitables<-wiki%>%html_nodes(".wikitable.sortable")
-  
-  for(i in 1:length(wikitables)){
-    temp=wikitables[[i]]%>%html_table(fill=TRUE)
-    if(nrow(temp)>49 &nrow(temp) < 60)
-      {
-        result_table=temp
-        break
-      }
-  }
-  
-  if(year == 1992){
-    result_table[1,]=str_replace_all(result_table[1,],"^.*(?<=\\))","Margin")
-    result_table =  result_table %>%  `colnames<-`(paste( result_table[1,], result_table[2,])) %>%slice(-1:-2) 
-      }else{
-    result_table = result_table %>% `colnames<-`(paste0(colnames(result_table),result_table[1,])) %>% slice(-1)
-    }
-  return(result_table)
-}
- 
 ```
 
 # Draw US map
@@ -231,7 +201,8 @@ shinyApp(
         sidebarLayout(
           sidebarPanel(
             selectInput("cand","Candidate",choices = NULL),
-            selectInput("state","State", choices = NULL)
+            selectInput("state","State", choices = NULL),
+            actionButton("retrieve", "See Candidate Data")
           ),
         mainPanel(
           dataTableOutput("elec_dat")
@@ -303,7 +274,6 @@ shinyApp(
     #update map
     
     observe({
-
       leafletProxy("map", data = kk()) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = ~pal(Winner),color = "black",
@@ -349,7 +319,7 @@ shinyApp(
         tags$h4(selectedState$name),tags$br(),
         sprintf("Electoral votes: %s", selectedState$`electoral votes`),tags$br(),
         sprintf("Winner: %s",selectedState$`Winner`),tags$br(),
-        sprintf("Margin: %s%%",selectedState$`Margin %`)
+        sprintf("Margin: %s%%",abs(selectedState$`Margin %`))
         ))
       
       leafletProxy("map") %>% addPopups(lng, lat, content, layerID = state)
@@ -361,11 +331,34 @@ shinyApp(
       if(is.null(event)){
        return()
       }
-      
       isolate({
         pop_content(event$id,event$lat,event$lng)
       })
-    })  
+    }) 
+
+    cand_table<-eventReactive(input$retrieve,{
+       if(input$cand!="none"&&input$state!="none"){
+        a<-data()%>%select(starts_with(input$cand))
+        aa<-cbind(data()$State,a)
+        colnames(aa)<-c("State","Popular Vote","Percentage","Electoral Vote")
+        aa%>%filter(State==input$state)
+       }else if(input$state=="none"&&input$cand!="none"){
+         a<-data()%>%select(starts_with(input$cand))
+         aa<-cbind(data()$State,a)
+         colnames(aa)<-c("State","Popular Vote","Percentage","Electoral Vote")
+         aa
+       }else if(input$state!="none"&&input$cand=="none"){
+         a<-data()%>%filter(State==input$state)
+         # aa<-as.data.frame(t(a))
+        a
+       }else{
+         NULL
+       }
+      
+    })
+    output$elec_dat<-renderDataTable(
+      cand_table())
+      
   }
   
 )
