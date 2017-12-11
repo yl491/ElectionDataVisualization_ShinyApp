@@ -190,6 +190,7 @@ shinyApp(
           numericInput("yearr","Year", min = 1920, max = 2016,
                        step = 4, value = 1996),
           actionButton("do", "See Results"),
+          checkboxInput("electoral","Display Electoral Votes?",value=FALSE),
           br(),br(),
           plotOutput("pop_vote"),
           dataTableOutput("elec_vote"),
@@ -322,7 +323,7 @@ shinyApp(
         sprintf("Margin: %s%%",abs(selectedState$`Margin %`))
         ))
       
-      leafletProxy("map") %>% addPopups(lng, lat, content, layerID = state)
+      leafletProxy("map") %>% addPopups(lng, lat, content, layerId = state)
     }
     
     observe({
