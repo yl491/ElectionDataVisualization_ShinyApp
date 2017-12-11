@@ -16,7 +16,7 @@ library(maps)
 library(leaflet)
 library(sf)
 library(datamap)
-library(rMaps)
+library(rMaps)#package ‘rMaps’ is not available (for R version 3.3.1) for me-YL
 devtools::install_github("hrbrmstr/albersusa")
 library(albersusa)
 ```
@@ -106,14 +106,17 @@ get_election_data=function(year){
   return(clean_table)
 }
 
+# year=2016
+
+test<-get_election_data(1940)
+
 a<-get_election_data(2016)
 b<-get_election_data(1992)
-c<-get_election_data(2000)
-d<-get_election_data(2012)
-e<-get_election_data(1920)
+
 
 #quick check to see which columns of output have NA's (if any)
 names(apply(e,2,function(x) {any(is.na(x))}))
+
 ```
 
 #Below and up functions are nearly the same, so pick the more simple one
@@ -279,10 +282,24 @@ shinyApp(
                     weight = 1, opacity = 1, layerId =~name, popup = kk()$name)
     })
     
+    # observe({
+    #   if(!is.null(input$map_shape_click)){
+    #     print(input$map_shape_click)
+    #   }
+    # })
+    
+    #update select choices
+    list_cand<-eventReactive(input$do,{
+      colnames(data())%>%str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")%>%na.omit()%>%unique()
+    })
     observe({
-      if(!is.null(input$map_shape_click)){
-        print(input$map_shape_click)
-      }
+      updateSelectInput(session, "cand","Candidate",
+                      choices=list_cand()[1:6])
+  })
+    
+    observe({
+      updateSelectInput(session, "state","State",
+                      choices=data()$State)
     })
     
     #observe({
