@@ -291,6 +291,9 @@ shinyApp(
     #update select choices
     list_cand<-eventReactive(input$do,{
       colnames(data())%>%str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")%>%na.omit()%>%unique()
+      #try this for a more robust regex
+      #str_extract("^(?!Others|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")
+      
     })
     observe({
       updateSelectInput(session, "cand","Candidate",
