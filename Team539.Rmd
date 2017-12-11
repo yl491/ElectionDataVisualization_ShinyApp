@@ -103,7 +103,7 @@ get_election_data=function(year){
       ) %>% select(-`State Abbr`)
   
   #rename clean output
-  clean_table = dd
+  clean_table = dd %>%distinct(State,.keep_all = TRUE)
 
   return(clean_table)
 }
