@@ -61,7 +61,7 @@ get_election_data=function(year){
     str_replace_all("(?<!^)[Ee]lectoral votes","E") %>%
     str_replace_all("Top.+/R\\)","Margin") %>%
     str_replace_all("#","Vote") %>%
-    str_replace("State Total Vote","Total Vote") %>%
+    str_replace("State [Tt]otal Vote","Total Vote") %>%
     str_replace("State [Tt]otal$|Total State$|^Total$","State Abbr") %>%
     str_replace("State or district","State") %>%
     str_replace_all("\\★","")
@@ -265,10 +265,15 @@ shinyApp(
     
     #render intial map
     output$map <- renderLeaflet({
-      leaflet(usa) %>%
+      leaf = leaflet(usa) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = "gray",color = "black",
-                    weight = 1, opacity = 1)
+                    weight = 1, opacity = 1) %>% addLegend(position ="bottomright",
+                  colors = c("red","pink","cornflowerblue","blue",
+                          "green","white"),
+                  labels = c("Strong Rep.","Weak Rep.","Weak Dem.","Strong Dem.",
+                  "Other","No Info"),
+                  title = "Party")
       })
     
     #update map
@@ -278,12 +283,7 @@ shinyApp(
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = ~pal(Party),color = "black",
                     weight = 1, opacity = 1, layerId =~name)
-        #addLegend(position ="bottomright",
-                  #colors = c("red","indianred2","cornflowerblue","blue",
-                          #"green","white"),
-                  #labels = c("Strong Rep.","Weak Rep.","Weak Dem.","Strong Dem.",
-                  #"Other","No Info"),
-                  #title = "Party")
+        
     })
     
     observe({
@@ -295,7 +295,7 @@ shinyApp(
     #update select choices
     list_cand<-eventReactive(input$do,{
       colnames(data()) %>%
-        str_extract("^(?!Others|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")%>%
+        str_extract("^(?!Other[s\\s]|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")%>%
         na.omit()%>%unique()
       #old regex
       #str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")
