@@ -221,7 +221,7 @@ shinyApp(
     
     k <- reactive({
       data() %>%
-        mutate(`Winner` = ifelse(
+        mutate(`Party` = ifelse(
           str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
           ifelse(
             str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
@@ -230,12 +230,12 @@ shinyApp(
               ifelse(
                 str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
                 ))))) %>%
-        select(State,`Winner`,`electoral votes`,`Margin %`)
+        select(State,`Winner`,`electoral votes`,`Margin %`,`Party`)
     })
     
     kk <- reactive({
       left_join(usa,k(), by ="State") %>%
-        mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`),
+        mutate(`Party` = ifelse(is.na(.$`Party`),0,.$`Party`),
                `electoral votes` = ifelse(
                  is.na(.$`electoral votes`),0,.$`electoral votes`),
                `Margin %` = ifelse(is.na(.$`Margin %`),0,.$`Margin %`))
@@ -277,7 +277,7 @@ shinyApp(
     observe({
       leafletProxy("map", data = kk()) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
-                    fillColor = ~pal(Winner),color = "black",
+                    fillColor = ~pal(Party),color = "black",
                     weight = 1, opacity = 1, layerId =~name)
         #addLegend(position ="bottomright",
                   #colors = c("red","indianred2","cornflowerblue","blue",
@@ -315,14 +315,21 @@ shinyApp(
     #function for popup content
     pop_content <- function(state,lat,lng){
       selectedState = kk() %>% filter(name == state)
-      
-      content <-as.character(tagList(
-        tags$h4(selectedState$name),tags$br(),
-        sprintf("Electoral votes: %s", selectedState$`electoral votes`),tags$br(),
-        sprintf("Winner: %s",selectedState$`Winner`),tags$br(),
-        sprintf("Margin: %s%%",abs(selectedState$`Margin %`))
+      if(is.na(selectedState$`Winner`)){
+        content = as.character(tagList(
+          tags$h4(selectedState$name),
+          sprintf("No Information Available")
         ))
-      
+
+      }else{
+        content <-as.character(tagList(
+          tags$h4(selectedState$name),
+          sprintf("Electoral votes: %s", selectedState$`electoral votes`),tags$br(),
+          sprintf("Winner: %s",selectedState$`Winner`),tags$br(),
+          sprintf("Margin: %s%%",abs(selectedState$`Margin %`))
+        ))
+      }
+
       leafletProxy("map") %>% addPopups(lng, lat, content, layerId = state)
     }
     
