@@ -63,7 +63,7 @@ get_election_data=function(year){
     str_replace_all("Top.+/R\\)","Margin") %>%
     str_replace_all("#","Vote") %>%
     str_replace("State Total Vote","Total Vote") %>%
-    str_replace("State Total|Total State|^Total$","State Abbr") %>%
+    str_replace("State [Tt]otal$|Total State$|^Total$","State Abbr") %>%
     str_replace("State or district","State") %>%
     str_replace_all("\\★","")
   
@@ -92,11 +92,13 @@ get_election_data=function(year){
     colnames(dd)[colnames(dd) == "elec_vote"] = "electoral votes"
   }
   
-  #add winner column
+  #add winner column and alter state column
   dd = dd %>%
     mutate(Winner = apply(dd,1,function(x){names(
       which.max(x[str_detect(colnames(dd),"E$")])) %>% 
-        str_replace("\\sE$","")}))
+        str_replace("\\sE$","")}),
+      State = `State Abbr` %>% str_extract_all("[:upper:]{2}") %>% unlist()
+      ) %>% select(-`State Abbr`)
   
   #rename clean output
   clean_table = dd
@@ -155,12 +157,12 @@ ggplot()+
   geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
 
 #using albersusa
-usa <- usa_sf() %>% mutate(`State Abbr` = as.character(iso_3166_2))
-k <- e %>% select(`State Abbr`,`Winner`,`electoral votes`,`Margin %`) %>%
+usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
+k <- d %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
   mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
                            ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
          )
-kk <- left_join(usa,k, by ="State Abbr")
+kk <- left_join(usa,k, by ="State")
 kk[is.na(kk)] <- 0
 
 pal <- colorNumeric(c("white","red","blue","green"),0:3)
@@ -185,7 +187,7 @@ us_state_map$set(
 #https://shiny.rstudio.com/gallery/superzip-example.html
 
 #map using albersusa
-usa <- usa_sf() %>% mutate(`State Abbr` = as.character(iso_3166_2))
+usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
 pal <- colorNumeric(c("white","red","indianred2",
                       "cornflowerblue","blue","green"),0:5)
 
@@ -237,11 +239,11 @@ shinyApp(
               ifelse(
                 str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
                 ))))) %>%
-        select(`State Abbr`,`Winner`,`electoral votes`,`Margin %`)
+        select(State,`Winner`,`electoral votes`,`Margin %`)
     })
     
     kk <- reactive({
-      left_join(usa,k(), by ="State Abbr") %>%
+      left_join(usa,k(), by ="State") %>%
         mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`),
                `electoral votes` = ifelse(
                  is.na(.$`electoral votes`),0,.$`electoral votes`),
