@@ -82,6 +82,9 @@ get_election_data=function(year){
   idx = which(str_detect(colnames(dd),"State"))
   
   dd[,-idx] = lapply(dd[,-idx],as.numeric)
+  dd$`Margin Vote`<-abs(dd$`Margin Vote`)
+  dd$`Margin %`<-abs(dd$`Margin %`)
+  
   
   #add electoral votes column if doesn't already exist
   if(!("electoral votes" %in% colnames(dd))){
