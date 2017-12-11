@@ -75,7 +75,8 @@ get_election_data=function(year){
   dd = apply(d,2,function(x){
     x %>% str_replace_all("–|−","-") %>% str_replace_all("N/A","-") %>%
       str_replace_all("^-$|^$","0") %>% str_replace_all("%","") %>%
-      str_replace_all(",","")
+      str_replace_all(",","") %>% str_replace_all("\\†","") %>%
+      str_replace_all("\\★","")
     }) %>% as.data.frame(stringsAsFactors = FALSE)
   
   #turn appropriate columns into numeric variables
@@ -93,7 +94,9 @@ get_election_data=function(year){
   
   #add winner column
   dd = dd %>%
-    mutate(Winner = apply(dd,1,function(x){names(which.max(x[str_detect(colnames(dd),"E$")]))}))
+    mutate(Winner = apply(dd,1,function(x){names(
+      which.max(x[str_detect(colnames(dd),"E$")])) %>% 
+        str_replace("\\sE$","")}))
   
   #rename clean output
   clean_table = dd
@@ -103,12 +106,12 @@ get_election_data=function(year){
 
 a<-get_election_data(2016)
 b<-get_election_data(1992)
-c<-get_election_data(1984)
+c<-get_election_data(2000)
 d<-get_election_data(2012)
 e<-get_election_data(1920)
 
 #quick check to see which columns of output have NA's (if any)
-any(apply(a,2,function(x) {any(is.na(x))}))
+names(apply(e,2,function(x) {any(is.na(x))}))
 ```
 
 #Below and up functions are nearly the same, so pick the more simple one
@@ -153,12 +156,13 @@ ggplot()+
 
 #using albersusa
 usa <- usa_sf() %>% mutate(`State Abbr` = as.character(iso_3166_2))
-k <- e %>% select(`State Abbr`,`Winner`) %>%
+k <- e %>% select(`State Abbr`,`Winner`,`electoral votes`,`Margin %`) %>%
   mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
                            ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
          )
-kk <- left_join(usa,k, by ="State Abbr") %>%
-          mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`))
+kk <- left_join(usa,k, by ="State Abbr")
+kk[is.na(kk)] <- 0
+
 pal <- colorNumeric(c("white","red","blue","green"),0:3)
 map <- leaflet(kk) %>%
   addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
@@ -186,7 +190,9 @@ pal <- colorNumeric(c("white","red","indianred2",
                       "cornflowerblue","blue","green"),0:5)
 
 shinyApp(
-  ui = fluidPage(
+  ui = navbarPage("Electoral College",
+    tabPanel("Electoral Map",
+        div(class="outer"),
         leafletOutput("map", width="100%",height=650),
         absolutePanel(id = "elec_dat",top = 50,
                    left = 20,right = "auto", bottom = "auto",
@@ -199,17 +205,29 @@ shinyApp(
           style = "opacity: 0.75"
           )         
         )
+    ),
+    tabPanel("Election Data",
+        sidebarLayout(
+          sidebarPanel(
+            selectInput("cand","Candidate",choices = NULL),
+            selectInput("state","State", choices = NULL)
+          ),
+        mainPanel(
+          dataTableOutput("elec_dat")
+        )
+      )
+    )
   ),
   server = function(input, output, session) 
   {
     
     #reactive values
-    data <- reactive({
+    data <- eventReactive(input$do,{
       get_election_data(input$yearr)
     })
     
     k <- reactive({
-      data() %>% 
+      data() %>%
         mutate(`Winner` = ifelse(
           str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
           ifelse(
@@ -219,23 +237,65 @@ shinyApp(
               ifelse(
                 str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
                 ))))) %>%
-        select(`State Abbr`,`Winner`)
+        select(`State Abbr`,`Winner`,`electoral votes`,`Margin %`)
     })
     
     kk <- reactive({
       left_join(usa,k(), by ="State Abbr") %>%
-        mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`))
+        mutate(`Winner` = ifelse(is.na(.$`Winner`),0,.$`Winner`),
+               `electoral votes` = ifelse(
+                 is.na(.$`electoral votes`),0,.$`electoral votes`),
+               `Margin %` = ifelse(is.na(.$`Margin %`),0,.$`Margin %`))
     })
+
     
-    #render map
+    #render intial map
     output$map <- renderLeaflet({
-      leaflet(kk()) %>%
+      leaflet(usa) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
-                    fillColor = ~pal(Winner),color = "black",
+                    fillColor = "gray",color = "black",
                     weight = 1, opacity = 1)
       })
     
-    }
+    #popup content
+    #observe({
+      #poly_pop <-tagList(
+        #tags$h4(kk()$name),tags$br(),
+        #sprintf("Electoral votes: %s", kk()$`electoral votes`),tags$br(),
+        #sprintf("Winner: %s",kk()$`Winner`),tags$br(),
+        #sprintf("Margin: %s%%",abs(kk()$`Margin %`))
+        #)
+    #})
+    
+    #update map
+    
+    observe({
+      
+      leafletProxy("map", data = kk()) %>%
+        addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+                    fillColor = ~pal(Winner),color = "black",
+                    weight = 1, opacity = 1, layerId =~name, popup = kk()$name)
+    })
+    
+    observe({
+      if(!is.null(input$map_shape_click)){
+        print(input$map_shape_click)
+      }
+    })
+    
+    #observe({
+      #leafletProxy("map") %>% clearPopups()
+      #pop <- input$map_shape_click
+      #if(is.null(pop)){
+        #return()
+      #}
+      
+      #isolate({
+        #leafletProxy("map") %>% addPopups(pop$lat,pop$lng,pop$id,
+                                          #layerId = pop$id)
+      #})
+    #})  
+  }
   
 )
 ```
