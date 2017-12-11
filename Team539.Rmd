@@ -161,7 +161,7 @@ ggplot()+
 
 #using albersusa
 usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
-k <- d %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
+k <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
   mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
                            ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
          )
@@ -303,19 +303,17 @@ shinyApp(
     #update map
     
     observe({
-      
-      #poly_pop <-tagList(
-        #tags$h4(kk()$name),tags$br(),
-        #sprintf("Electoral votes: %s", kk()$`electoral votes`),tags$br(),
-        #sprintf("Winner: %s",kk()$`Winner`),tags$br(),
-        #sprintf("Margin: %s%%",abs(kk()$`Margin %`))
-        #)
-      
+
       leafletProxy("map", data = kk()) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = ~pal(Winner),color = "black",
-                    weight = 1, opacity = 1, layerId =~name,
-                    popup = kk()$name)
+                    weight = 1, opacity = 1, layerId =~name)
+        #addLegend(position ="bottomright",
+                  #colors = c("red","indianred2","cornflowerblue","blue",
+                          #"green","white"),
+                  #labels = c("Strong Rep.","Weak Rep.","Weak Dem.","Strong Dem.",
+                  #"Other","No Info"),
+                  #title = "Party")
     })
     
     observe({
@@ -343,18 +341,31 @@ shinyApp(
                       choices=c("none",data()$State))
     })
     
-    #observe({
-      #leafletProxy("map") %>% clearPopups()
-      #pop <- input$map_shape_click
-      #if(is.null(pop)){
-        #return()
-      #}
+    #function for popup content
+    pop_content <- function(state,lat,lng){
+      selectedState = kk() %>% filter(name == state)
       
-      #isolate({
-        #leafletProxy("map") %>% addPopups(pop$lat,pop$lng,pop$id,
-                                          #layerId = pop$id)
-      #})
-    #})  
+      content <-as.character(tagList(
+        tags$h4(selectedState$name),tags$br(),
+        sprintf("Electoral votes: %s", selectedState$`electoral votes`),tags$br(),
+        sprintf("Winner: %s",selectedState$`Winner`),tags$br(),
+        sprintf("Margin: %s%%",selectedState$`Margin %`)
+        ))
+      
+      leafletProxy("map") %>% addPopups(lng, lat, content, layerID = state)
+    }
+    
+    observe({
+      leafletProxy("map") %>% clearPopups()
+      event <- input$map_shape_click
+      if(is.null(event)){
+       return()
+      }
+      
+      isolate({
+        pop_content(event$id,event$lat,event$lng)
+      })
+    })  
   }
   
 )
