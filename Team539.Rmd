@@ -181,6 +181,19 @@ us_state_map$set(
   labels = TRUE
 )
 
+#test of pie chart
+pi_r = b[nrow(b),which(str_detect(colnames(test),"Republican Vote"))][[1]]
+pi_d = b[nrow(b),which(str_detect(colnames(test),"Democratic Vote"))][[1]]
+pi_o = b[nrow(b),which(str_detect(colnames(test),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+x<-c(pi_r,pi_d,pi_o)
+
+pie(x, labels = paste0(round(100*x/sum(x), 1),"%"), main = "Popular Vote",col=c("red","blue","grey"))
+legend("topright",
+       c(colnames(b) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+           na.omit() %>% unique(),
+         colnames(b) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+           na.omit() %>% unique(),"Others"),
+       fill = c("red","blue","grey"))
 ```
 
 
@@ -198,7 +211,7 @@ shinyApp(
   ui = navbarPage("Electoral College",
     tabPanel("Electoral Map",
         div(class="outer"),
-        leafletOutput("map", width="100%",height=650),
+        leafletOutput("map", width="100%",height=600),
         absolutePanel(id = "elec_dat",top = 50,
                    left = 20,right = "auto", bottom = "auto",
                    width = 300, height = "auto", draggable = TRUE, fixed = TRUE,
@@ -207,6 +220,7 @@ shinyApp(
           numericInput("yearr","Year", min = 1920, max = 2016,
                        step = 4, value = 1996),
           actionButton("do", "See Results"),
+          plotOutput("pop_vote"),
           style = "opacity: 0.75"
           )         
         )
@@ -252,6 +266,26 @@ shinyApp(
                  is.na(.$`electoral votes`),0,.$`electoral votes`),
                `Margin %` = ifelse(is.na(.$`Margin %`),0,.$`Margin %`))
     })
+    
+    #render pie chart
+    output$pop_vote <- renderPlot({
+      pi_r = data()[nrow(data()),which(str_detect(
+        colnames(data()),"Republican Vote"))][[1]]
+      pi_d = data()[nrow(data()),which(str_detect(
+        colnames(data()),"Democratic Vote"))][[1]]
+      pi_o = data()[nrow(data()),which(str_detect(
+        colnames(data()),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+      x = c(pi_r,pi_d,pi_o)
+
+      pie(x, labels = paste0(round(100*x/sum(x), 1),"%"),
+          main = "Popular Vote",col=c("red","blue","grey"))
+      legend("topleft",
+             c(colnames(data()) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+                 na.omit() %>% unique(),
+               colnames(data()) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+                 na.omit() %>% unique(),"Others"),
+             fill = c("red","blue","grey"))
+    })
 
     
     #render intial map
@@ -290,19 +324,21 @@ shinyApp(
     
     #update select choices
     list_cand<-eventReactive(input$do,{
-      colnames(data())%>%str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")%>%na.omit()%>%unique()
-      #try this for a more robust regex
-      #str_extract("^(?!Others|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")
+      colnames(data()) %>%
+        str_extract("^(?!Others|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")%>%
+        na.omit()%>%unique()
+      #old regex
+      #str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")
       
     })
     observe({
       updateSelectInput(session, "cand","Candidate",
-                      choices=list_cand()[1:6])
+                      choices=c("none",list_cand()))
   })
     
     observe({
       updateSelectInput(session, "state","State",
-                      choices=data()$State)
+                      choices=c("none",data()$State))
     })
     
     #observe({
