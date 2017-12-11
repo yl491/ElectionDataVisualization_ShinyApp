@@ -252,11 +252,11 @@ shinyApp(
       
       if(input$electoral=="FALSE"){
        pi_r = data()[nrow(data()),which(str_detect(
-         colnames(data()),"Republican Vote"))][[1]]
+         colnames(data()),"Republican Vote"))[1]]
        pi_d = data()[nrow(data()),which(str_detect(
-          colnames(data()),"Democratic Vote"))][[1]]
+          colnames(data()),"Democratic Vote"))[1]]
         pi_o = data()[nrow(data()),which(str_detect(
-          colnames(data()),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+          colnames(data()),"Total Vote"))[1]] - sum(pi_r,pi_d)
         x = c(pi_r,pi_d,pi_o)
       
        pie(x, labels = paste0(round(100*x/sum(x), 1),"%"),
@@ -267,11 +267,11 @@ shinyApp(
        
       }else{
         pi_r = data()[nrow(data()),which(str_detect(
-         colnames(data()),"Republican E"))][[1]]
+         colnames(data()),"Republican E"))[1]]
        pi_d = data()[nrow(data()),which(str_detect(
-          colnames(data()),"Democratic E"))][[1]]
+          colnames(data()),"Democratic E"))[1]]
         pi_o = data()[nrow(data()),which(str_detect(
-          colnames(data()),"electoral votes"))][[1]] - sum(pi_r,pi_d)
+          colnames(data()),"electoral votes"))[1]] - sum(pi_r,pi_d)
         x = c(pi_r,pi_d,pi_o)
         
        
