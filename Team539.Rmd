@@ -231,7 +231,8 @@ shinyApp(
         sidebarLayout(
           sidebarPanel(
             selectInput("cand","Candidate",choices = NULL),
-            selectInput("state","State", choices = NULL)
+            selectInput("state","State", choices = NULL),
+            actionButton("retrieve", "See Candidate Data")
           ),
         mainPanel(
           dataTableOutput("elec_dat")
@@ -304,12 +305,12 @@ shinyApp(
     
     observe({
       
-      #poly_pop <-tagList(
-        #tags$h4(kk()$name),tags$br(),
-        #sprintf("Electoral votes: %s", kk()$`electoral votes`),tags$br(),
-        #sprintf("Winner: %s",kk()$`Winner`),tags$br(),
-        #sprintf("Margin: %s%%",abs(kk()$`Margin %`))
-        #)
+      # poly_pop <-tagList(
+      # tags$h4(kk()$name),tags$br(),
+      # sprintf("Electoral votes: %s", kk()$`electoral votes`),tags$br(),
+      # sprintf("Winner: %s",kk()$`Winner`),tags$br(),
+      # sprintf("Margin: %s%%",abs(kk()$`Margin %`))
+      # )
       
       leafletProxy("map", data = kk()) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
@@ -342,7 +343,14 @@ shinyApp(
       updateSelectInput(session, "state","State",
                       choices=c("none",data()$State))
     })
-    
+  
+    cand_table<-eventReactive(input$retrieve,{
+      # if(input$cand!="none"&&input$state!="none"){
+        data()%>%select(starts_with(input$cand))
+      # }
+    })
+    output$elec_dat<-renderDataTable(
+      cand_table)
     #observe({
       #leafletProxy("map") %>% clearPopups()
       #pop <- input$map_shape_click
