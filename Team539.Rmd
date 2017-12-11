@@ -212,17 +212,19 @@ shinyApp(
     tabPanel("Electoral Map",
         div(class="outer"),
         leafletOutput("map", width="100%",height=600),
-        absolutePanel(id = "elec_dat",top = 50,
-                   left = 20,right = "auto", bottom = "auto",
+        absolutePanel(id = "elec_dat",top = 70,
+                   left = 50,right = "auto", bottom = "auto",
                    width = 300, height = "auto", draggable = TRUE, fixed = TRUE,
-          wellPanel(
+          #wellPanel(
           h3("Presidential Election App"),
           numericInput("yearr","Year", min = 1920, max = 2016,
                        step = 4, value = 1996),
           actionButton("do", "See Results"),
+          br(),br(),
           plotOutput("pop_vote"),
+          dataTableOutput("elec_vote"),
           style = "opacity: 0.75"
-          )         
+          #)         
         )
     ),
     tabPanel("Election Data",
@@ -276,14 +278,16 @@ shinyApp(
       pi_o = data()[nrow(data()),which(str_detect(
         colnames(data()),"Total Vote"))][[1]] - sum(pi_r,pi_d)
       x = c(pi_r,pi_d,pi_o)
+      
+      r_lab = colnames(data()) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+                 na.omit() %>% unique()
+      d_lab = colnames(data()) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+                 na.omit() %>% unique()
 
       pie(x, labels = paste0(round(100*x/sum(x), 1),"%"),
           main = "Popular Vote",col=c("red","blue","grey"))
       legend("topleft",
-             c(colnames(data()) %>% str_extract("\\w+(?=\\sRepublican)") %>%
-                 na.omit() %>% unique(),
-               colnames(data()) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
-                 na.omit() %>% unique(),"Others"),
+             c(r_lab[1],d_lab[1],"Others"),
              fill = c("red","blue","grey"))
     })
 
@@ -296,31 +300,29 @@ shinyApp(
                     weight = 1, opacity = 1)
       })
     
-    #popup content
-    #observe({
+    #update map
+    
+    observe({
+      
       #poly_pop <-tagList(
         #tags$h4(kk()$name),tags$br(),
         #sprintf("Electoral votes: %s", kk()$`electoral votes`),tags$br(),
         #sprintf("Winner: %s",kk()$`Winner`),tags$br(),
         #sprintf("Margin: %s%%",abs(kk()$`Margin %`))
         #)
-    #})
-    
-    #update map
-    
-    observe({
       
       leafletProxy("map", data = kk()) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = ~pal(Winner),color = "black",
-                    weight = 1, opacity = 1, layerId =~name, popup = kk()$name)
+                    weight = 1, opacity = 1, layerId =~name,
+                    popup = kk()$name)
     })
     
-    # observe({
-    #   if(!is.null(input$map_shape_click)){
-    #     print(input$map_shape_click)
-    #   }
-    # })
+    observe({
+       if(!is.null(input$map_shape_click)){
+         print(input$map_shape_click)
+       }
+     })
     
     #update select choices
     list_cand<-eventReactive(input$do,{
