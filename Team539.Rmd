@@ -27,7 +27,7 @@ get_election_data=function(year){
 
   html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
  
-  ttt =
+  
   wiki<-read_html(html_str)
   wikitables<-wiki%>%html_nodes(".wikitable.sortable")
   
@@ -62,7 +62,7 @@ get_election_data=function(year){
     str_replace_all("(?<!^)[Ee]lectoral votes","E") %>%
     str_replace_all("Top.+/R\\)","Margin") %>%
     str_replace_all("#","Vote") %>%
-    str_replace("State Total Vote","Total Vote") %>%
+    str_replace("State [Tt]otal Vote","Total Vote") %>%
     str_replace("State [Tt]otal$|Total State$|^Total$","State Abbr") %>%
     str_replace("State or district","State") %>%
     str_replace_all("\\★","")
@@ -104,7 +104,7 @@ get_election_data=function(year){
       ) %>% select(-`State Abbr`)
   
   #rename clean output
-  clean_table = dd
+  clean_table = dd %>%distinct(State,.keep_all = TRUE)
 
   return(clean_table)
 }
@@ -117,8 +117,75 @@ a<-get_election_data(2016)
 b<-get_election_data(1992)
 
 
+<<<<<<< HEAD
 
 
+=======
+```
+
+# Draw US map
+```{r}
+# way 1
+mapStates<-map("state",fill=TRUE,plot=FALSE)
+leaflet(data=mapStates)%>%addTiles()%>%addPolygons(fillColor = topo.colors(10,alpha=NULL),stroke = FALSE)
+
+# way 2
+all_states <- map_data("state")
+ggplot()+
+  geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
+
+#using albersusa
+usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
+k <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
+  mutate(`Party` = ifelse(
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
+          ifelse(
+            str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
+            ifelse(
+              str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10,3,
+              ifelse(
+                str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
+                )))))
+#alternative trial using case_when
+test <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
+  mutate(`Party` = case_when(
+    str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10 ~ 1,
+    str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10 ~ 2,
+    str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10 ~ 3,
+    str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10 ~ 4,
+    TRUE ~ 5
+  ))
+
+kk <- left_join(usa,k, by ="State")
+kk[is.na(kk)] <- 0
+
+pal <- colorNumeric(c("white","red","blue","green"),0:3)
+map <- leaflet(kk) %>%
+  addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+              fillColor = ~pal(Winner),color = "black", weight = 1, opacity = 1)
+
+#using datamap
+us_state_map <- Datamaps$new()
+us_state_map$set(
+  scope = 'usa',
+  legend = TRUE,
+  labels = TRUE
+)
+
+#test of pie chart
+pi_r = b[nrow(b),which(str_detect(colnames(test),"Republican Vote"))][[1]]
+pi_d = b[nrow(b),which(str_detect(colnames(test),"Democratic Vote"))][[1]]
+pi_o = b[nrow(b),which(str_detect(colnames(test),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+x<-c(pi_r,pi_d,pi_o)
+
+pie(x, labels = paste0(round(100*x/sum(x), 1),"%"), main = "Popular Vote",col=c("red","blue","grey"))
+legend("topright",
+       c(colnames(b) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+           na.omit() %>% unique(),
+         colnames(b) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+           na.omit() %>% unique(),"Others"),
+       fill = c("red","blue","grey"))
+>>>>>>> 739945514c0e105fedf8bfbc328904eb6dc1c8c8
 ```
 
 
@@ -148,7 +215,6 @@ shinyApp(
                        step = 4, value = 1996),
           actionButton("do", "See Results"),
           checkboxInput("electoral","Display Electoral Votes?",value=FALSE),
-          br(),br(),
           plotOutput("pop_vote"),
           dataTableOutput("elec_vote"),
           style = "opacity: 0.75"
@@ -178,15 +244,12 @@ shinyApp(
     
     k <- reactive({
       data() %>%
-        mutate(`Party` = ifelse(
-          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
-          ifelse(
-            str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
-            ifelse(
-              str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10,3,
-              ifelse(
-                str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
-                ))))) %>%
+        mutate(`Party` = case_when(
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10 ~ 1,
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10 ~ 2,
+          str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10 ~ 3,
+          str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10 ~ 4,
+          TRUE ~ 5)) %>%
         select(State,`Winner`,`electoral votes`,`Margin %`,`Party`)
     })
     
@@ -210,26 +273,26 @@ shinyApp(
       
       if(input$electoral=="FALSE"){
        pi_r = data()[nrow(data()),which(str_detect(
-         colnames(data()),"Republican Vote"))][[1]]
+         colnames(data()),"Republican Vote"))[1]]
        pi_d = data()[nrow(data()),which(str_detect(
-          colnames(data()),"Democratic Vote"))][[1]]
+          colnames(data()),"Democratic Vote"))[1]]
         pi_o = data()[nrow(data()),which(str_detect(
-          colnames(data()),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+          colnames(data()),"Total Vote"))[1]] - sum(pi_r,pi_d)
         x = c(pi_r,pi_d,pi_o)
       
        pie(x, labels = paste0(round(100*x/sum(x), 1),"%"),
             main = "Popular Vote",col=c("red","blue","grey"))
        legend("topleft",
               c(r_lab[1],d_lab[1],"Others"),
-              fill = c("red","blue","grey"))
+              fill = c("red","blue","grey"), cex = 0.75)
        
       }else{
         pi_r = data()[nrow(data()),which(str_detect(
-         colnames(data()),"Republican E"))][[1]]
+         colnames(data()),"Republican E"))[1]]
        pi_d = data()[nrow(data()),which(str_detect(
-          colnames(data()),"Democratic E"))][[1]]
+          colnames(data()),"Democratic E"))[1]]
         pi_o = data()[nrow(data()),which(str_detect(
-          colnames(data()),"electoral votes"))][[1]] - sum(pi_r,pi_d)
+          colnames(data()),"electoral votes"))[1]] - sum(pi_r,pi_d)
         x = c(pi_r,pi_d,pi_o)
         
        
@@ -237,17 +300,22 @@ shinyApp(
             main = "Electoral Vote",col=c("red","blue","grey"))
        legend("topleft",
               c(r_lab[1],d_lab[1],"Others"),
-              fill = c("red","blue","grey"))
+              fill = c("red","blue","grey"), cex = 0.75)
       }
     })
 
     
     #render intial map
     output$map <- renderLeaflet({
-      leaflet(usa) %>%
+      leaf = leaflet(usa) %>%
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = "gray",color = "black",
-                    weight = 1, opacity = 1)
+                    weight = 1, opacity = 1) %>% addLegend(position ="bottomright",
+                  colors = c("red","pink","cornflowerblue","blue",
+                          "green","white"),
+                  labels = c("Strong Rep.","Weak Rep.","Weak Dem.","Strong Dem.",
+                  "Other","No Info"),
+                  title = "Party")
       })
     
     #update map
@@ -257,12 +325,7 @@ shinyApp(
         addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
                     fillColor = ~pal(Party),color = "black",
                     weight = 1, opacity = 1, layerId =~name)
-        #addLegend(position ="bottomright",
-                  #colors = c("red","indianred2","cornflowerblue","blue",
-                          #"green","white"),
-                  #labels = c("Strong Rep.","Weak Rep.","Weak Dem.","Strong Dem.",
-                  #"Other","No Info"),
-                  #title = "Party")
+        
     })
     
     observe({
@@ -274,7 +337,7 @@ shinyApp(
     #update select choices
     list_cand<-eventReactive(input$do,{
       colnames(data()) %>%
-        str_extract("^(?!Others|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")%>%
+        str_extract("^(?!Other[s\\s]|Total|Margin)(.*?)[:upper:]\\w+(.*?)[:upper:]\\w{2,}")%>%
         na.omit()%>%unique()
       #old regex
       #str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")
@@ -348,6 +411,7 @@ shinyApp(
   }
   
 )
+<<<<<<< HEAD
 ```
 
 
@@ -430,3 +494,6 @@ shinyApp(
 #            na.omit() %>% unique(),"Others"),
 #        fill = c("red","blue","grey"))
 ```
+=======
+```
+>>>>>>> 739945514c0e105fedf8bfbc328904eb6dc1c8c8
