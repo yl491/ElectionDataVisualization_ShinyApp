@@ -1,0 +1,104 @@
+Presidential Election Maps for United States from 1920s
+========================================================
+author: Team FiveThirtyNine
+date: 12/13/2017
+autosize: true
+
+Project Outline
+========================================================
+
+- Introduction
+- Methods
+- Result
+- Discussion
+
+Introduction
+========================================================
+
+- Source: https://uselectionatlas.org/RESULTS/
+
+```{r,include=FALSE}
+library(knitr)
+library(ggplot2)
+library(png)
+```
+
+```{r,echo=FALSE, out.width = "900px", out.height = "600px"}
+img1_path<-"Slide-figure/1.png"
+include_graphics(img1_path)
+```
+
+Introduction
+========================================================
+
+```{r, echo=FALSE, out.width = "900px", out.height = "600px"}
+img2_path<-"Slide-figure/2.png"
+include_graphics(img2_path)
+```
+
+Introduction
+========================================================
+
+```{r, echo=FALSE, out.width = "900px", out.height = "600px"}
+img3_path<-"Slide-figure/3.png"
+include_graphics(img3_path)
+```
+
+Introduction
+========================================================
+
+- Source: https://en.wikipedia.org/wiki/United_States_presidential_election,_2016
+
+```{r, echo=FALSE, out.width = "1100px", out.height = "500px"}
+img4_path<-"Slide-figure/4.png"
+include_graphics(img4_path)
+```
+
+Introduction
+========================================================
+
+```{r, echo=FALSE}
+img5_path<-"Slide-figure/5.png"
+include_graphics(img5_path)
+```
+
+Methods: Web Scraping
+========================================================
+
+- Scraping Data from Wikipedia
+  - Wikipedia table includes state results for all presidential candidates
+- Filter desired table from Wiki page
+- Clean up using regular expressions
+- Make the format of tables the same
+- Congressional districts electoral votes(Maine or Nebraska)
+  - No uniform criterion detailing when the Wikipedia table
+  - Keep overall state popular vote only
+
+Methods: Shiny
+========================================================
+- Two parts of shiny app
+- First: US map with states specified
+  - visualize using leaflet
+  - construct us map using spatial data from "alberusa"
+  - when year is selected, map will be colored with winner party's color
+  - pop-up when clicking on each state
+  - pop-up show breif info of electoral votes, winner, and margin
+  - pie charts of votes parties earned
+
+
+Methods: Shiny
+======================================================== 
+- Second: detail result of elections
+  - a dataframe is displayed
+  - users can select state and candidates to see specific results
+  
+Result: Show Shiny App
+========================================================
+
+
+Discussion: Advantages
+========================================================
+
+
+Discussion: Disadvantages
+========================================================
