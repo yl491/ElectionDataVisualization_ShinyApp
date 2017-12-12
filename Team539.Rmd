@@ -21,6 +21,7 @@ library(albersusa)
 ```
 
 # Scraping Data from Wikipedia
+Writeup: we scrape data from wikipedia's preidential election pages. Because there are usually more than one tables on one wikipedia page, we filter the desired table by measuring the dimension of table. The table with more than 50 rows is supposed to contain election data by state, and thus we pick that table for each election year. We use regular expression to clean the table scraped (removing all kinds of weird symbols), as well as to standardize column names. Besides, we remove superfluous columns/rows, add column that indicates electoral vote for each state, mutate State column to get abbreviated state names, add a column that indicates winner for each state, and change negative values (such as marginal votes) to their absolute values. For some election years, there are more than onw rows for one specific state: in such case we keep the row with the largest election votes, and remove the rest of the rows.
 ```{r}
 get_election_data=function(year){
 
@@ -116,93 +117,14 @@ a<-get_election_data(2016)
 b<-get_election_data(1992)
 
 
-<<<<<<< HEAD
-#quick check to see which columns of output have NA's (if any)
-names(apply(e,2,function(x) {any(is.na(x))}))
 
-```
 
-#Below and up functions are nearly the same, so pick the more simple one
-
-```{r}
-get_election_data=function(year){
-
-  html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
-   wiki<-read_html(html_str)
-  wikitables<-wiki%>%html_nodes(".wikitable.sortable")
-  
-  for(i in 1:length(wikitables)){
-    temp=wikitables[[i]]%>%html_table(fill=TRUE)
-    if(nrow(temp)>49 & nrow(temp) < 60)
-      {
-        result_table=temp
-        break
-      }
-  }
-  
-  if(year == 1992){
-    result_table[1,]=str_replace_all(result_table[1,],"^.*(?<=\\))","Margin")
-    result_table =  result_table %>%  `colnames<-`(paste( result_table[1,], result_table[2,])) %>%slice(-1:-2) 
-      }else{
-    result_table = result_table %>% `colnames<-`(paste0(colnames(result_table),result_table[1,])) %>% slice(-1)
-    }
-  return(result_table)
-}
- 
-=======
->>>>>>> 2c3058f1f9737d06dcac760145bd3517674908b9
-```
-
-# Draw US map
-```{r}
-# way 1
-mapStates<-map("state",fill=TRUE,plot=FALSE)
-leaflet(data=mapStates)%>%addTiles()%>%addPolygons(fillColor = topo.colors(10,alpha=NULL),stroke = FALSE)
-
-# way 2
-all_states <- map_data("state")
-ggplot()+
-  geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
-
-#using albersusa
-usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
-k <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
-  mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
-                           ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
-         )
-kk <- left_join(usa,k, by ="State")
-kk[is.na(kk)] <- 0
-
-pal <- colorNumeric(c("white","red","blue","green"),0:3)
-map <- leaflet(kk) %>%
-  addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
-              fillColor = ~pal(Winner),color = "black", weight = 1, opacity = 1)
-
-#using datamap
-us_state_map <- Datamaps$new()
-us_state_map$set(
-  scope = 'usa',
-  legend = TRUE,
-  labels = TRUE
-)
-
-#test of pie chart
-pi_r = b[nrow(b),which(str_detect(colnames(test),"Republican Vote"))][[1]]
-pi_d = b[nrow(b),which(str_detect(colnames(test),"Democratic Vote"))][[1]]
-pi_o = b[nrow(b),which(str_detect(colnames(test),"Total Vote"))][[1]] - sum(pi_r,pi_d)
-x<-c(pi_r,pi_d,pi_o)
-
-pie(x, labels = paste0(round(100*x/sum(x), 1),"%"), main = "Popular Vote",col=c("red","blue","grey"))
-legend("topright",
-       c(colnames(b) %>% str_extract("\\w+(?=\\sRepublican)") %>%
-           na.omit() %>% unique(),
-         colnames(b) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
-           na.omit() %>% unique(),"Others"),
-       fill = c("red","blue","grey"))
 ```
 
 
 # Shiny App
+In this part, we visualize our election data and output visualizations via a shiny app. We create 2 tab panels for this app: the first shows a U.S. map, which pops up election result of a state when that part is clicked. It also outputs pie charts for popular vote and electoral vote. the second tab panel outputs a table of election results based on users selection. We use package leaflet to create the U.S. map. When an election year is entered and the action button is clicked, the server called get_election_data(year), which returns a tidy dataframe. We mutate a new column called "Party" to indicate the election result for each state, and assign different colors to our visualization map according to this column (blue=democratic, red=republican; the deeper the color, the more that party won that state). Pie charts are created by summing up electoral votes/popular votes from the dataframe. The pop-out part is the most challenging: inspired by Mine's SuperZip app, we create a funciton called pop_content(), which outputs election result (current state, winner, percentage, etc.). Then, when a click is observed, the server calls this function with the state name, the latitude and the longitude of this click.
+For the second panel, the choices in selection boxes are generated when the a year is entered by users in the first panel. Based on users selection, the server filter out unwanted rows/columns, and output the desired result as a table.
 ```{r}
 #perhaps we could take cosmetic elements from Mine's SuperZip app: 
 #https://shiny.rstudio.com/gallery/superzip-example.html
@@ -426,4 +348,85 @@ shinyApp(
   }
   
 )
+```
+
+
+
+
+#Below and up functions are nearly the same, so pick the more simple one
+
+```{r}
+# get_election_data=function(year){
+# 
+#   html_str<-paste0("https://en.wikipedia.org/wiki/United_States_presidential_election,_",year,"#Results_by_state")
+#    wiki<-read_html(html_str)
+#   wikitables<-wiki%>%html_nodes(".wikitable.sortable")
+# 
+#   for(i in 1:length(wikitables)){
+#     temp=wikitables[[i]]%>%html_table(fill=TRUE)
+#     if(nrow(temp)>49 & nrow(temp) < 60)
+#       {
+#         result_table=temp
+#         break
+#       }
+#   }
+# 
+#   if(year == 1992){
+#     result_table[1,]=str_replace_all(result_table[1,],"^.*(?<=\\))","Margin")
+#     result_table =  result_table %>%  `colnames<-`(paste( result_table[1,], result_table[2,])) %>%slice(-1:-2)
+#       }else{
+#     result_table = result_table %>% `colnames<-`(paste0(colnames(result_table),result_table[1,])) %>% slice(-1)
+#     }
+#   return(result_table)
+# }
+
+
+```
+
+# Draw US map
+```{r}
+# # way 1
+# mapStates<-map("state",fill=TRUE,plot=FALSE)
+# leaflet(data=mapStates)%>%addTiles()%>%addPolygons(fillColor = topo.colors(10,alpha=NULL),stroke = FALSE)
+# 
+# # way 2
+# all_states <- map_data("state")
+# ggplot()+
+#   geom_polygon(data=all_states, aes(x=long, y=lat, group=group),colour="white")
+# 
+# #using albersusa
+# usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
+# k <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
+#   mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,
+#                            ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
+#          )
+# kk <- left_join(usa,k, by ="State")
+# kk[is.na(kk)] <- 0
+# 
+# pal <- colorNumeric(c("white","red","blue","green"),0:3)
+# map <- leaflet(kk) %>%
+#   addPolygons(smoothFactor = 0.2, fillOpacity = 0.8,
+#               fillColor = ~pal(Winner),color = "black", weight = 1, opacity = 1)
+# 
+# #using datamap
+# us_state_map <- Datamaps$new()
+# us_state_map$set(
+#   scope = 'usa',
+#   legend = TRUE,
+#   labels = TRUE
+# )
+# 
+# #test of pie chart
+# pi_r = b[nrow(b),which(str_detect(colnames(test),"Republican Vote"))][[1]]
+# pi_d = b[nrow(b),which(str_detect(colnames(test),"Democratic Vote"))][[1]]
+# pi_o = b[nrow(b),which(str_detect(colnames(test),"Total Vote"))][[1]] - sum(pi_r,pi_d)
+# x<-c(pi_r,pi_d,pi_o)
+# 
+# pie(x, labels = paste0(round(100*x/sum(x), 1),"%"), main = "Popular Vote",col=c("red","blue","grey"))
+# legend("topright",
+#        c(colnames(b) %>% str_extract("\\w+(?=\\sRepublican)") %>%
+#            na.omit() %>% unique(),
+#          colnames(b) %>% str_extract("\\w+(?=\\sDemocratic)") %>%
+#            na.omit() %>% unique(),"Others"),
+#        fill = c("red","blue","grey"))
 ```
