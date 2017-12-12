@@ -132,9 +132,25 @@ ggplot()+
 #using albersusa
 usa <- usa_sf() %>% mutate(State = as.character(iso_3166_2))
 k <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
-  mutate(`Winner` = ifelse(str_detect(.$`Winner`,"Republican"),1,               
-                           ifelse(str_detect(.$`Winner`,"Democratic"),2,3))
-         )
+  mutate(`Party` = ifelse(
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
+          ifelse(
+            str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
+            ifelse(
+              str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10,3,
+              ifelse(
+                str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
+                )))))
+#alternative trial using case_when
+test <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
+  mutate(`Party` = case_when(
+    str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10 ~ 1,
+    str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10 ~ 2,
+    str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10 ~ 3,
+    str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10 ~ 4,
+    TRUE ~ 5
+  ))
+
 kk <- left_join(usa,k, by ="State")
 kk[is.na(kk)] <- 0
 
@@ -220,15 +236,12 @@ shinyApp(
     
     k <- reactive({
       data() %>%
-        mutate(`Party` = ifelse(
-          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10,1,
-          ifelse(
-            str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10,2,
-            ifelse(
-              str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10,3,
-              ifelse(
-                str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10,4,5
-                ))))) %>%
+        mutate(`Party` = case_when(
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10 ~ 1,
+          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10 ~ 2,
+          str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10 ~ 3,
+          str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10 ~ 4,
+          TRUE ~ 5)) %>%
         select(State,`Winner`,`electoral votes`,`Margin %`,`Party`)
     })
     
@@ -263,7 +276,7 @@ shinyApp(
             main = "Popular Vote",col=c("red","blue","grey"))
        legend("topleft",
               c(r_lab[1],d_lab[1],"Others"),
-              fill = c("red","blue","grey"))
+              fill = c("red","blue","grey"), cex = 0.75)
        
       }else{
         pi_r = data()[nrow(data()),which(str_detect(
@@ -279,7 +292,7 @@ shinyApp(
             main = "Electoral Vote",col=c("red","blue","grey"))
        legend("topleft",
               c(r_lab[1],d_lab[1],"Others"),
-              fill = c("red","blue","grey"))
+              fill = c("red","blue","grey"), cex = 0.75)
       }
     })
 
@@ -316,7 +329,7 @@ shinyApp(
     #update select choices
     list_cand<-eventReactive(input$do,{
       colnames(data()) %>%
-        str_extract("^(?!Other[s\\s]|Total|Margin)[:upper:]\\w+(.*?)[:upper:]\\w+")%>%
+        str_extract("^(?!Other[s\\s]|Total|Margin)(.*?)[:upper:]\\w+(.*?)[:upper:]\\w{2,}")%>%
         na.omit()%>%unique()
       #old regex
       #str_extract("[:upper:]\\w+[:space:][:upper:]\\w+")
