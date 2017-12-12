@@ -1,26 +1,30 @@
 ---
-title: "Presidential Election Maps for United Sates from 1920s"
+title: "Presidential Election Maps for United States from 1920s"
 author: "Team FiveThirtyNine"
-date: "12/3/2017"
+date: "12/13/2017"
 output: html_document
 ---
-# Libraries Needed
-```{r, message=F}
+# Introduction
+
+Our goal for this project was to create an interactive electoral map displaying results of U.S. presidential elections from 1920 to present. With this aim in mind, we create a visualization similar to other maps summarizing results from the Electoral College. Using leaflet within a Shiny app, we enable the user to interactively update the electoral map as well as explore the state by state results for a given election. We also give users access to the data used to create the map for a particular election year which includes results for all candidates across all states.
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
 library(stringr)
 library(dplyr)
 library(tidyr)
 library(shiny)
 library(rvest)
-library(ggplot2)
-library(maps)
 library(leaflet)
-library(sf)
-library(datamap)
 devtools::install_github("hrbrmstr/albersusa")
 library(albersusa)
 ```
 
 # Scraping Data from Wikipedia
+
+While there are numerous data sources available summarizing presidential election results, none are as complete as the state by state results table on Wikipedia. Unlike other sources, these tables include state by state results for all presidential candidates, not just those from the two major parties. Therefore, using Wikipedia is not only convenient as it allows us to obtain data via web scraping from a single source for all election years, but it also gives us more refined data on the performance of third party candidates.
+
+We generate a clean data table for each election year via scraping 
+
 ```{r}
 get_election_data=function(year){
 
@@ -144,10 +148,10 @@ k <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
 #alternative trial using case_when
 test <- b %>% select(State,`Winner`,`electoral votes`,`Margin %`) %>%
   mutate(`Party` = case_when(
-    str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10 ~ 1,
-    str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10 ~ 2,
-    str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10 ~ 3,
-    str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10 ~ 4,
+    str_detect(.$`Winner`,"Republican") & .$`Margin %`>10 ~ 1,
+    str_detect(.$`Winner`,"Republican") & .$`Margin %`<=10 ~ 2,
+    str_detect(.$`Winner`,"Democratic") & .$`Margin %`<=10 ~ 3,
+    str_detect(.$`Winner`,"Democratic") & .$`Margin %`>10 ~ 4,
     TRUE ~ 5
   ))
 
@@ -237,10 +241,10 @@ shinyApp(
     k <- reactive({
       data() %>%
         mutate(`Party` = case_when(
-          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)>10 ~ 1,
-          str_detect(.$`Winner`,"Republican") & abs(.$`Margin %`)<=10 ~ 2,
-          str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)<=10 ~ 3,
-          str_detect(.$`Winner`,"Democratic") & abs(.$`Margin %`)>10 ~ 4,
+          str_detect(.$`Winner`,"Republican") & .$`Margin %`>10 ~ 1,
+          str_detect(.$`Winner`,"Republican") & .$`Margin %`<=10 ~ 2,
+          str_detect(.$`Winner`,"Democratic") & .$`Margin %`<=10 ~ 3,
+          str_detect(.$`Winner`,"Democratic") & .$`Margin %`>10 ~ 4,
           TRUE ~ 5)) %>%
         select(State,`Winner`,`electoral votes`,`Margin %`,`Party`)
     })
