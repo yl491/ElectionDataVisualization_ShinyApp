@@ -1,4 +1,4 @@
-Presidential Election Maps for United States from 1920s
+Presidential Election Maps for United States
 ========================================================
 author: Team FiveThirtyNine
 date: 12/13/2017
@@ -7,12 +7,12 @@ autosize: true
 Project Outline
 ========================================================
 
-- Introduction
+- Introduction/Goals
 - Methods
 - Result
 - Discussion
 
-Introduction
+Goals: Display Aggregate Election Data
 ========================================================
 
 - Source: https://uselectionatlas.org/RESULTS/
@@ -28,7 +28,7 @@ img1_path<-"Slide-figure/1.png"
 include_graphics(img1_path)
 ```
 
-Introduction
+Goals: Display Electoral map
 ========================================================
 
 ```{r, echo=FALSE, out.width = "900px", out.height = "600px"}
@@ -36,7 +36,7 @@ img2_path<-"Slide-figure/2.png"
 include_graphics(img2_path)
 ```
 
-Introduction
+Goals: Display State Level Results
 ========================================================
 
 ```{r, echo=FALSE, out.width = "900px", out.height = "600px"}
@@ -44,7 +44,7 @@ img3_path<-"Slide-figure/3.png"
 include_graphics(img3_path)
 ```
 
-Introduction
+Introduction: Data Source
 ========================================================
 
 - Source: https://en.wikipedia.org/wiki/United_States_presidential_election,_2016
@@ -54,10 +54,7 @@ img4_path<-"Slide-figure/4.png"
 include_graphics(img4_path)
 ```
 
-Introduction
-========================================================
-
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 img5_path<-"Slide-figure/5.png"
 include_graphics(img5_path)
 ```
@@ -67,38 +64,49 @@ Methods: Web Scraping
 
 - Scraping Data from Wikipedia
   - Wikipedia table includes state results for all presidential candidates
-- Filter desired table from Wiki page
-- Clean up using regular expressions
-- Make the format of tables the same
-- Congressional districts electoral votes(Maine or Nebraska)
-  - No uniform criterion detailing when the Wikipedia table
-  - Keep overall state popular vote only
+  - Single data source with more robust data on third party candidates
+- Filter desired table from Wikipedia page
+- Make the format of tables consistent across years
+  - Difficulties: Maine & Nebraska
+      - Allocate electoral votes by congressional district & overall popular vote
+      - No uniform criterion detailing when the Wikipedia table
+      - Keep overall state popular vote only
 
 Methods: Shiny
 ========================================================
 - Two parts of shiny app
+  - structure inspired by SuperZip app
+
 - First: US map with states specified
   - visualize using leaflet
-  - construct us map using spatial data from "alberusa"
-  - when year is selected, map will be colored with winner party's color
-  - pop-up when clicking on each state
-  - pop-up show breif info of electoral votes, winner, and margin
-  - pie charts of votes parties earned
+  - construct U.S. map using spatial data from "albersusa"
+    - Color palette details state level results
+    - pop-up when clicking on each state
+      - cursory info on local result: electoral votes, winner, margin of victory
+    - pie charts for popular and electoral vote tallies
 
 
 Methods: Shiny
 ======================================================== 
-- Second: detail result of elections
+- Second: detail aggregate and state level election results
   - a dataframe is displayed
-  - users can select state and candidates to see specific results
+    - concise way of displaying large amount of information
+    - users can select state and candidates to see specific results
   
 Result: Show Shiny App
 ========================================================
 
 
-Discussion: Advantages
+Discussion
 ========================================================
+- Advantages:
+  - Interactive map with stand alone election data
+    - More robust information on third party candidates
 
+- Disadvantages:
+  - Non-standard formatting of Wikipedia tables
+    - Difficulty scraping data for Maine and Nebraska
+    
+- Future developments:
+  - Add temporal component: interactively display electoral trends over time
 
-Discussion: Disadvantages
-========================================================
