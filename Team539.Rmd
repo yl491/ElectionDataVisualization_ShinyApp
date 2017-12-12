@@ -142,7 +142,6 @@ shinyApp(
         absolutePanel(id = "elec_dat",top = 70,
                    left = 50,right = "auto", bottom = "auto",
                    width = 300, height = "auto", draggable = TRUE, fixed = TRUE,
-          #wellPanel(
           h3("Presidential Election App"),
           numericInput("yearr","Year", min = 1920, max = 2016,
                        step = 4, value = 1996),
@@ -151,7 +150,6 @@ shinyApp(
           plotOutput("pop_vote"),
           dataTableOutput("elec_vote"),
           style = "opacity: 0.75"
-          #)         
         )
     ),
     tabPanel("Election Data",
